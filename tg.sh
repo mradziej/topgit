@@ -131,6 +131,9 @@ recurse_deps()
 			_dep_is_tgish=
 
 		# Shoo shoo, keep our environment alone!
+        if [ "$_dep" = "$TG_STOP" ]; then
+            continue
+        fi
 		[ -z "$_dep_is_tgish" ] ||
 			(recurse_deps "$_cmd" "$_dep" "$@") ||
 			_ret=$?

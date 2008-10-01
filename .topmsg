@@ -1,0 +1,4 @@
+From: Michael Radziej <mir@noris.de>
+Subject: [PATCH] t/conflicts
+
+Merge only when conflicts arise.
