@@ -49,7 +49,7 @@ branch.  In order to flexibly accomodate even complex scenarios when
 you track many patches where many are independent but some depend
 on others, TopGit ignores the ancient Quilt heritage of patch series
 and instead allows the patches to freely form graphs (DAGs just like
-Git history itself, only "one lever higher"). For now, you have
+Git history itself, only "one level higher"). For now, you have
 to manually specify which patches does the current one depend
 on, but TopGit might help you with that in the future in a darcs-like
 fashion.
@@ -298,6 +298,8 @@ tg mail
 	its documentation for details on how to setup email for git.
 	You can pass arbitrary options to this command through the
 	'-s' parameter, but you must double-quote everything.
+	The '-r' parameter with msgid can be used to generate in-reply-to
+	and reference headers to an earlier mail.
 
 	TODO: 'tg mail patchfile' to mail an already exported patch
 	TODO: mailing patch series
@@ -331,10 +333,12 @@ tg summary
 
 	This can take long time to accurately determine all the relevant
 	information about each branch; you can pass '-t' to get just
-	terse list of topic branch names quickly.
+	terse list of topic branch names quickly. Alternately, you can
+	pass '--graphviz' to get a dot-suitable output to draw a dependency
+	graph between the topic branches.
 
 	TODO: Speed up by an order of magnitude
-	TODO: Graph view
+	TODO: Text graph view
 
 tg export
 ~~~~~~~~~
