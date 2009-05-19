@@ -5,7 +5,7 @@
 
 terse=
 graphviz=
-
+graphviz_verbose=
 
 ## Parse options
 
@@ -16,6 +16,9 @@ while [ -n "$1" ]; do
 		terse=1;;
 	--graphviz)
 		graphviz=1;;
+	--graphviz=verbose)
+		graphviz=1
+		graphviz_verbose=1;;
 	*)
 		echo "Usage: tg [...] summary [-t | --graphviz]" >&2
 		exit 1;;
@@ -36,19 +39,24 @@ if [ -n "$graphviz" ]; then
 
 digraph G {
 
-graph [
-  rankdir = "TB"
-  label="TopGit Layout\n\n\n"
-  fontsize = 14
-  labelloc=top
-  pad = "0.5,0.5"
-];
+	graph [
+		rankdir = "TB"
+		label="TopGit Layout\n\n\n"
+		fontsize = 14
+		labelloc=top
+		pad = "0.5,0.5"
+	];
 
 EOT
 fi
 
 
 ## List branches
+
+if [ -n "$graphviz_verbose" ]; then
+	tmpmsg="$(mktemp -t tg-summary.XXXXXX)"
+	trap 'rm -f "$tmpmsg"' 0
+fi
 
 git for-each-ref refs/top-bases |
 	while read rev type ref; do
@@ -62,12 +70,33 @@ git for-each-ref refs/top-bases |
 			continue
 		fi
 		if [ -n "$graphviz" ]; then
+
+			if [ -n "$graphviz_verbose" ]; then
+				type="header"
+				lines=0
+				echo "\t\"$name\" ["
+				git cat-file blob "$name:.topmsg" > "$tmpmsg"
+				while read line; do
+					l="$(echo "$line" | sed -e 's/"/\\"/g')"
+					[ -z "$line" -a "$type" = "header" ] && {
+						type="body"
+						echo "\t\ttg_header_lines = \"$lines\""
+						lines=0
+						continue
+					}
+					echo "\t\ttg_${type}_${lines} = \"$l\""
+					lines=`expr $lines + 1`
+				done < "$tmpmsg"
+				echo "\t\ttg_body_lines = \"$lines\""
+				echo "\t]"
+			fi
+
 			git cat-file blob "$name:.topdeps" | while read dep; do
 				dep_is_tgish=true
 				ref_exists "refs/top-bases/$dep"  ||
 					dep_is_tgish=false
 				if ! "$dep_is_tgish" || ! branch_annihilated $dep; then
-					echo "\"$name\" -> \"$dep\";"
+					echo "\t\"$name\" -> \"$dep\";"
 				fi
 			done
 			continue

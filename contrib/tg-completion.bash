@@ -302,6 +302,30 @@ _tg_export ()
 	esac
 }
 
+_tg_graph ()
+{
+	local cur="${COMP_WORDS[COMP_CWORD]}"
+
+	case "$cur" in
+	-*)
+		__tgcomp "
+			--color
+			--no-color
+			--bfs
+			--dfs
+			--reverse
+			--no-reverse
+			--header
+			--no-header
+			--body
+			--no-body
+		"
+		;;
+	*)
+		__tgcomp "$(__tg_refs)"
+	esac
+}
+
 _tg_help ()
 {
 	local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -444,6 +468,7 @@ _tg ()
 	delete)      _tg_delete ;;
 	depend)      _tg_depend ;;
 	export)      _tg_export ;;
+	graph)       _tg_graph ;;
 	help)        _tg_help ;;
 	import)      _tg_import ;;
 	info)        _tg_info ;;
