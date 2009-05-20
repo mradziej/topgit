@@ -7,6 +7,7 @@ stack=
 reverse=
 header=
 body=
+pointer=
 
 summary_graphviz=--graphviz
 
@@ -35,6 +36,10 @@ while [ -n "$1" ]; do
 		body="body";;
 	--no-body)
 		body="no-body";;
+	--decorate)
+		pointer="pointer";;
+	--no-decorate)
+		pointer="no-pointer";;
 	-*)
 		echo "Usage: tg [...] graph [--color] [--bfs|--dfs] [--reverse] [--header] [--body] [NAME]" >&2
 		exit 1;;
@@ -68,7 +73,11 @@ type gvpr >/dev/null 2>&1 ||
 
 setup_pager
 
+# disable color output if pager is not active
+[ "x$GIT_PAGER_IN_USE" = "x1" ] ||
+	color="no-color"
+
 $tg summary $summary_graphviz |
 	ccomps -x $name |
-	gvpr -a "$color $stack $reverse $header $body" \
+	gvpr -a "$color $stack $reverse $header $body $pointer" \
 	     -f "@sharedir@"/graph.gvpr

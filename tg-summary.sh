@@ -74,21 +74,25 @@ git for-each-ref refs/top-bases |
 			if [ -n "$graphviz_verbose" ]; then
 				type="header"
 				lines=0
-				echo "\t\"$name\" ["
+				printf "\t\"%s\" [\n" "$name"
 				git cat-file blob "$name:.topmsg" > "$tmpmsg"
+				old_IFS="$IFS"
+				IFS=""
 				while read line; do
-					l="$(echo "$line" | sed -e 's/"/\\"/g')"
+					l="$(printf "%s" "$line" | sed -e 's/"/\\"/g')"
 					[ -z "$line" -a "$type" = "header" ] && {
 						type="body"
-						echo "\t\ttg_header_lines = \"$lines\""
+						printf "\t\ttg_header_lines = \"%s\"\n" "$lines"
 						lines=0
 						continue
 					}
-					echo "\t\ttg_${type}_${lines} = \"$l\""
+					printf "\t\ttg_%s_%s = \"%s\"\n" "$type" "$lines" "$l"
 					lines=`expr $lines + 1`
 				done < "$tmpmsg"
-				echo "\t\ttg_body_lines = \"$lines\""
-				echo "\t]"
+				IFS="$old_IFS"
+				[ $lines -gt 0 ] &&
+					printf "\t\ttg_%s_lines = \"%s\"\n" "$type" "$lines"
+				printf "\t];\n"
 			fi
 
 			git cat-file blob "$name:.topdeps" | while read dep; do
@@ -96,7 +100,7 @@ git for-each-ref refs/top-bases |
 				ref_exists "refs/top-bases/$dep"  ||
 					dep_is_tgish=false
 				if ! "$dep_is_tgish" || ! branch_annihilated $dep; then
-					echo "\t\"$name\" -> \"$dep\";"
+					printf "\t\"%s\" -> \"%s\";\n" "$$name" "$dep"
 				fi
 			done
 			continue

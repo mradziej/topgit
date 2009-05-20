@@ -319,6 +319,8 @@ _tg_graph ()
 			--no-header
 			--body
 			--no-body
+			--decorate
+			--no-decorate
 		"
 		;;
 	*)
@@ -417,6 +419,7 @@ _tg_summary ()
 	*)
 		__tgcomp "
 			--graphviz
+			--graphviz=verbose
 			-t
 		"
 	esac

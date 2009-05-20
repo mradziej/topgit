@@ -1,9 +1,10 @@
 BEGIN {
-    int use_stack = 0;
+    int use_stack = 1;
     int use_color = 1;
     int rev_order = 0;
     int show_header = 0;
     int show_body = 0;
+    int point_at_node = 0;
 
     int argi;
     for (argi = 0; argi < ARGC; argi++) {
@@ -27,6 +28,10 @@ BEGIN {
             show_body = 1;
         else if (ARGV[argi] == "no-body")
             show_body = 0;
+        else if (ARGV[argi] == "pointer")
+            point_at_node = 1;
+        else if (ARGV[argi] == "no-pointer")
+            point_at_node = 0;
     }
 
     edge_t first_edge(node_t n)
@@ -81,17 +86,22 @@ BEGIN {
         return nd;
     }
 
-    int node_num_parents(node_t n)
+    int node_num_parents(node_t nnp_n)
     {
         int nnp;
 
         if (!rev_order) {
-            nnp = n.outdegree;
+            nnp = nnp_n.outdegree;
         } else {
-            nnp = n.indegree;
+            nnp = nnp_n.indegree;
         }
 
         return nnp;
+    }
+
+    void assert(int a) {
+        if (!a)
+            exit(1);
     }
 
     /* enum graph_state */
@@ -223,9 +233,10 @@ BEGIN {
      */
     unsigned gg_default_column_color;
 
-    string gg_write_column(node_t n, string col_char)
+    string gg_write_column(node_t gg_wc_n, string gg_wc_col_char)
     {
-        return n.col_color + col_char + n.col_color_end;
+        assert(gg_wc_n);
+        return gg_wc_n.col_color + gg_wc_col_char + gg_wc_n.col_color_end;
     }
 
     void graph_set_current_column_color(node_t n)
@@ -352,6 +363,7 @@ BEGIN {
         is_commit_in_columns = 1;
         for (gg_uc_i = 0; gg_uc_i <= gg_num_columns; gg_uc_i++) {
             node_t gg_uc_col_n;
+
             if (gg_uc_i == gg_num_columns) {
                 if (gg_uc_seen_this)
                     break;
@@ -362,7 +374,7 @@ BEGIN {
             }
 
             if (gg_uc_col_n == gg_n) {
-                int old_mapping_idx = gg_uc_mapping_idx;
+                int gg_uc_old_mapping_idx = gg_uc_mapping_idx;
                 gg_uc_seen_this = 1;
                 gg_n_index = gg_uc_i;
                 for (gg_uc_e = first_edge(gg_n); gg_uc_e; gg_uc_e = next_edge(gg_uc_e)) {
@@ -376,7 +388,13 @@ BEGIN {
                     gg_uc_mapping_idx = graph_insert_into_new_columns(
                             adj_node(gg_uc_e), gg_uc_mapping_idx);
                 }
-                if (gg_uc_mapping_idx == old_mapping_idx)
+                /*
+                 * We always need to increment mapping_idx by at
+                 * least 2, even if it has no interesting parents.
+                 * The current commit always takes up at least 2
+                 * spaces.
+                 */
+                if (gg_uc_mapping_idx == gg_uc_old_mapping_idx)
                     gg_uc_mapping_idx += 2;
             } else {
                 gg_uc_mapping_idx = graph_insert_into_new_columns(gg_uc_col_n,
@@ -403,9 +421,9 @@ BEGIN {
         gg_state = gg_us_s;
     }
 
-    void graph_update(node_t n) {
-        gg_n = n;
-        gg_num_parents = node_num_parents(n);
+    void graph_update(node_t gg_u_n) {
+        gg_n = gg_u_n;
+        gg_num_parents = node_num_parents(gg_u_n);
         gg_prev_n_index = gg_n_index;
         graph_update_columns();
         gg_expansion_row = 0;
@@ -480,17 +498,15 @@ BEGIN {
          *
          * We need 2 extra rows for every parent over 2.
          */
-        if (!(gg_num_parents >= 3))
-            exit(1);
+        assert(gg_num_parents >= 3);
         gg_opcl_num_expansion_rows = (gg_num_parents - 2) * 2;
 
         /*
          * gg_expansion_row tracks the current expansion row we are on.
          * It should be in the range [0, gg_opcl_num_expansion_rows - 1]
          */
-        if (!(0 <= gg_expansion_row &&
-               gg_expansion_row < gg_opcl_num_expansion_rows))
-            exit(1);
+        assert(0 <= gg_expansion_row &&
+               gg_expansion_row < gg_opcl_num_expansion_rows);
 
         /*
          * Output the row
@@ -515,7 +531,7 @@ BEGIN {
                  * print the branch lines as "|".
                  */
                 if (gg_prev_state == GRAPH_POST_MERGE &&
-                    gg_prev_commit_index < gg_opcl_i)
+                    gg_prev_n_index < gg_opcl_i)
                     gg_opcl_sb += gg_write_column(gg_columns[gg_opcl_i], "\\");
                 else
                     gg_opcl_sb += gg_write_column(gg_columns[gg_opcl_i], "|");
@@ -611,6 +627,7 @@ BEGIN {
         gg_ocl_chars_written = 0;
         for (gg_ocl_i = 0; gg_ocl_i <= gg_num_columns; gg_ocl_i++) {
             node_t gg_ocl_n;
+
             if (gg_ocl_i == gg_num_columns) {
                 if (gg_ocl_seen_this)
                     break;
@@ -649,7 +666,10 @@ BEGIN {
                 gg_ocl_sb += gg_write_column(gg_columns[gg_ocl_i], "|");
                 gg_ocl_chars_written++;
             }
-            gg_ocl_sb += " ";
+            if (point_at_node && gg_ocl_seen_this && gg_ocl_i < gg_num_columns)
+                gg_ocl_sb += "-";
+            else
+                gg_ocl_sb += " ";
             gg_ocl_chars_written++;
         }
 
@@ -692,6 +712,7 @@ BEGIN {
         gg_opml_chars_written = 0;
         for (gg_opml_i = 0; gg_opml_i <= gg_num_columns; gg_opml_i++) {
             node_t gg_opml_col_n;
+
             if (gg_opml_i == gg_num_columns) {
                 if (gg_opml_seen_this)
                     break;
@@ -779,16 +800,14 @@ BEGIN {
              * the graph much more legible, since whenever branches
              * cross, only one is moving directions.
              */
-            if (!(gg_oCl_target * 2 <= gg_oCl_i))
-                exit(1);
+            assert(gg_oCl_target * 2 <= gg_oCl_i);
 
             if (gg_oCl_target * 2 == gg_oCl_i) {
                 /*
                  * This column is already in the
                  * correct place
                  */
-                if (!(gg_new_mapping[gg_oCl_i] == -1))
-                    exit(1);
+                assert(gg_new_mapping[gg_oCl_i] == -1);
                 gg_new_mapping[gg_oCl_i] = gg_oCl_target;
             } else if (gg_new_mapping[gg_oCl_i - 1] < 0) {
                 /*
@@ -839,12 +858,9 @@ BEGIN {
                  * The branch to the left of that space
                  * should be our eventual target.
                  */
-                if (!(gg_new_mapping[gg_oCl_i - 1] > gg_oCl_target))
-                    exit(1);
-                if (!(gg_new_mapping[gg_oCl_i - 2] < 0))
-                    exit(1);
-                if (!(gg_new_mapping[gg_oCl_i - 3] == gg_oCl_target))
-                    exit(1);
+                assert(gg_new_mapping[gg_oCl_i - 1] > gg_oCl_target);
+                assert(gg_new_mapping[gg_oCl_i - 2] < 0);
+                assert(gg_new_mapping[gg_oCl_i - 3] == gg_oCl_target);
                 gg_new_mapping[gg_oCl_i - 2] = gg_oCl_target;
                 /*
                  * Mark this branch as the horizontal edge to
@@ -975,10 +991,23 @@ E {
     $.ts_deleted = "false";
 }
 END_G {
+    int i, j;
+    node_t switch_node;
+
+    /* reverse initial entries to maintain a somewhat stable order */
+    if (use_stack) {
+        i = 0;
+        j = ts_tail - 1;
+        while (i < j) {
+            switch_node = ts_empty_deg[i];
+            ts_empty_deg[i++]  = ts_empty_deg[j];
+            ts_empty_deg[j--]  = switch_node;
+        }
+    }
+
     while (use_stack ? ts_tail > 0 : ts_head < ts_tail) {
         node_t n;
         edge_t e;
-        int i;
         int lines;
 
         if (use_stack) {
@@ -991,9 +1020,7 @@ END_G {
         graph_update(n);
 
         /* print lines till commit line */
-        while (gg_state != GRAPH_PADDING) {
-            if (graph_next_line_is_commit())
-                break;
+        while (gg_state != GRAPH_COMMIT) {
             printf("%s\n", graph_next_line());
         }
 
@@ -1026,6 +1053,9 @@ END_G {
             printf("%s\n", graph_next_line());
         }
 
+        if (use_stack)
+            i = ts_tail;
+
         for (e = first_edge(n); e; e = next_edge(e)) {
             if (e.ts_deleted == "false") {
                 node_t d = adj_node(e);
@@ -1037,6 +1067,16 @@ END_G {
                 }
 
                 e.ts_deleted = "true";
+            }
+        }
+
+        /* reverse new entries to maintain a somewhat stable order */
+        if (use_stack) {
+            j = ts_tail - 1;
+            while (i < j) {
+                switch_node = ts_empty_deg[i];
+                ts_empty_deg[i++]  = ts_empty_deg[j];
+                ts_empty_deg[j--]  = switch_node;
             }
         }
     }
